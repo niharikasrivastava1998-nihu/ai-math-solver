@@ -1,1 +1,2 @@
 window.apiKey = "AIzaSyC0QnZOQwHyzs3whF9SCqhOQt0Jgj2dmPM";
+initializeApp();
