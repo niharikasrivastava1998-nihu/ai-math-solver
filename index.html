@@ -83,8 +83,10 @@
     </div>
 
     <script>
+        // The API endpoint and key are already defined here.
         const API_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-        const apiKey = ""; // Canvas will provide this dynamically
+        // IMPORTANT: The apiKey is left empty as the execution environment injects the correct value.
+        const apiKey = ""; 
         
         // UI Elements
         const queryInput = document.getElementById('math-query');
@@ -124,7 +126,7 @@
          * Main function to call the Gemini API.
          */
         async function solveMathProblem(userQuery) {
-            // UPDATED SYSTEM PROMPT: Strictly instructs the model to use search and provide accurate calculation results.
+            // This strict prompt forces the model to use the search tool for accurate calculations.
             const systemPrompt = "You are a world-class math and calculation engine. Your primary purpose is to solve the provided query accurately. You MUST use the Google Search tool for all factual checks and calculations, including complex arithmetic, algebra, calculus, and scientific constants. Always provide the final answer clearly, followed by a detailed, step-by-step explanation of the methodology. Present the response using standard Markdown and LaTeX syntax for equations ($$ for display math).";
             
             const url = `${API_URL_BASE}?key=${apiKey}`;
@@ -132,7 +134,7 @@
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                tools: [{ "google_search": {} }], // Google Search Grounding is enabled here
+                tools: [{ "google_search": {} }], // Google Search Grounding is enabled here (The "API infusion")
             };
 
             const options = {
@@ -146,6 +148,10 @@
                 
                 if (!response.ok) {
                     const errorBody = await response.json();
+                    // Detect the 403 error specifically for better user feedback
+                    if (response.status === 403) {
+                       throw new Error(`403 Forbidden: API Key Missing/Invalid. Please ensure your environment is configured.`);
+                    }
                     throw new Error(`API returned status ${response.status}: ${errorBody.error?.message || 'Unknown error'}`);
                 }
 
@@ -211,7 +217,7 @@
             // Check for and display hard errors
             if (result.text.startsWith('Error:')) {
                  solutionOutput.innerHTML = `<p class="text-red-600 font-semibold">${result.text}</p>`;
-                 displayStatus('An error occurred during calculation. See output above.', 'bg-red-100 text-red-800');
+                 displayStatus('An API or network error occurred during calculation. See output above.', 'bg-red-100 text-red-800');
                  return;
             }
             
@@ -245,6 +251,23 @@
             statusMessage.className = `mt-4 p-3 rounded-lg text-sm ${classes}`;
             statusMessage.classList.remove('hidden');
         }
+
+        /**
+         * Initializes the application on load and checks for API key status.
+         */
+        function initializeApp() {
+            // Check the apiKey variable at runtime
+            if (!apiKey) {
+                solutionOutput.innerHTML = '<p class="text-red-600 font-semibold">CRITICAL ERROR: API Key Missing.</p>';
+                displayStatus('403 Forbidden Error Likely: The application is running, but the Gemini API Key is missing. Please ensure your execution environment has provided the key.', 'bg-red-100 text-red-800');
+                solveButton.disabled = true;
+            } else {
+                solutionOutput.innerHTML = '<p class="text-gray-500">Enter your calculation above and click "Solve Problem" to get started! (API Key detected.)</p>';
+                solveButton.disabled = false;
+            }
+        }
+
+        window.onload = initializeApp;
     </script>
 
 </body>
