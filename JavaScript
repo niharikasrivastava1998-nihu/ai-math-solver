@@ -1,2 +1,1 @@
-// This line, present in your current index.html, is what enables the Google Search calculation tool.
-tools: [{ "google_search": {} }],
+window.apiKey = "AIzaSyC0QnZOQwHyzs3whF9SCqhOQt0Jgj2dmPM";
