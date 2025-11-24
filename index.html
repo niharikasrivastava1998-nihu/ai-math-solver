@@ -44,6 +44,9 @@
                 AI Math Solver
             </h1>
             <p class="text-gray-500 mt-2">Ask a calculation, formula, or complex math problem. Powered by Gemini with Google Search grounding.</p>
+            
+            <!-- API Status Indicator Added for Debugging -->
+            <div id="api-status" class="mt-3 text-sm font-medium p-2 rounded inline-block"></div>
         </header>
 
         <!-- Input Area -->
@@ -97,6 +100,7 @@
         const sourcesOutput = document.getElementById('sources-output');
         const sourceList = document.getElementById('source-list');
         const statusMessage = document.getElementById('status-message');
+        const apiStatus = document.getElementById('api-status'); // New element
 
         /**
          * Utility function for API fetch with exponential backoff.
@@ -188,6 +192,8 @@
          * UI rendering and control logic.
          */
         solveButton.addEventListener('click', async () => {
+            if (solveButton.disabled) return; // Prevent double click if disabled by init
+
             const query = queryInput.value.trim();
 
             if (!query) {
@@ -258,10 +264,21 @@
         function initializeApp() {
             // Check the apiKey variable at runtime
             if (!apiKey) {
+                // Update API Status indicator
+                apiStatus.textContent = "API Key: MISSING";
+                apiStatus.className = "mt-3 text-sm font-medium p-2 rounded inline-block bg-red-500 text-white";
+                
+                // Set main output and status message for user
                 solutionOutput.innerHTML = '<p class="text-red-600 font-semibold">CRITICAL ERROR: API Key Missing.</p>';
-                displayStatus('403 Forbidden Error Likely: The application is running, but the Gemini API Key is missing. Please ensure your execution environment has provided the key.', 'bg-red-100 text-red-800');
+                displayStatus('403 Forbidden Error Likely: The application is running, but the Gemini API Key is missing. Please ensure your environment has provided the key.', 'bg-red-100 text-red-800');
+                
+                // Disable the solve button until a key is available
                 solveButton.disabled = true;
             } else {
+                // API Key is present, ready to use
+                apiStatus.textContent = "API Key: Detected";
+                apiStatus.className = "mt-3 text-sm font-medium p-2 rounded inline-block bg-green-500 text-white";
+                
                 solutionOutput.innerHTML = '<p class="text-gray-500">Enter your calculation above and click "Solve Problem" to get started! (API Key detected.)</p>';
                 solveButton.disabled = false;
             }
