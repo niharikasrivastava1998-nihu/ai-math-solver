@@ -88,8 +88,12 @@
     <script>
         // The API endpoint and key are already defined here.
         const API_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-        // IMPORTANT: The apiKey is left empty as the execution environment injects the correct value.
-        const apiKey = ""; 
+        
+        // 🚨🚨 CRITICAL SECURITY WARNING 🚨🚨
+        // This is your API key. By placing it here, it is publicly visible in your website's source code.
+        // DO NOT deploy this file to a public repository (like GitHub Pages) unless you accept the risk 
+        // that your key will be stolen and potentially abused.
+        const apiKey = "AIzaSyC0QnZOQwHyzs3whF9SCqhOQt0Jgj2dmPM"; 
         
         // UI Elements
         const queryInput = document.getElementById('math-query');
@@ -133,6 +137,7 @@
             // This strict prompt forces the model to use the search tool for accurate calculations.
             const systemPrompt = "You are a world-class math and calculation engine. Your primary purpose is to solve the provided query accurately. You MUST use the Google Search tool for all factual checks and calculations, including complex arithmetic, algebra, calculus, and scientific constants. Always provide the final answer clearly, followed by a detailed, step-by-step explanation of the methodology. Present the response using standard Markdown and LaTeX syntax for equations ($$ for display math).";
             
+            // Note: The apiKey variable is used here.
             const url = `${API_URL_BASE}?key=${apiKey}`;
             
             const payload = {
