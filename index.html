@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Math Solver</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for appearance */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+            min-height: 100vh;
+        }
+        .container-box {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px rgba(0, 0, 0, 0.05);
+            background-color: white;
+        }
+        .btn-solve {
+            transition: all 0.2s ease;
+        }
+        .btn-solve:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+        }
+    </style>
+</head>
+<body class="p-4 flex items-center justify-center">
+
+    <div id="app" class="w-full max-w-2xl mt-8 mb-8 container-box p-6 md:p-10 rounded-xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800">
+                AI Math Solver
+            </h1>
+            <p class="text-gray-500 mt-2">Ask a calculation, formula, or complex math problem. Powered by Gemini with Google Search grounding.</p>
+        </header>
+
+        <!-- Input Area -->
+        <div class="mb-6">
+            <label for="math-query" class="block text-sm font-medium text-gray-700 mb-2">Your Math Query:</label>
+            <textarea id="math-query" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition duration-150" placeholder="e.g., What is the integral of sin(x) from 0 to pi? Or, calculate 567 * 890."></textarea>
+        </div>
+
+        <!-- Solve Button -->
+        <button id="solve-button" class="btn-solve w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-blue-300 flex items-center justify-center">
+            <span id="button-text">Solve Problem</span>
+            <svg id="loading-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </button>
+
+        <!-- Output and Results Area -->
+        <div id="results-container" class="mt-8 pt-6 border-t border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Solution:</h2>
+            <div id="solution-output" class="p-4 bg-gray-50 rounded-lg min-h-[100px] border border-gray-200 text-gray-700 whitespace-pre-wrap">
+                Your calculated solution will appear here.
+            </div>
+            
+            <!-- Sources Area -->
+            <div id="sources-output" class="mt-4 p-3 bg-white border border-gray-200 rounded-lg text-sm hidden">
+                <p class="font-semibold text-gray-600 mb-1">Sources Used:</p>
+                <ul id="source-list" class="list-disc pl-5 text-gray-500 space-y-1">
+                    <!-- Sources will be injected here -->
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Error/Status Message Box -->
+        <div id="status-message" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+    </div>
+
+    <script>
+        const API_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        const apiKey = ""; // Canvas will provide this dynamically
+        
+        // UI Elements
+        const queryInput = document.getElementById('math-query');
+        const solveButton = document.getElementById('solve-button');
+        const buttonText = document.getElementById('button-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const solutionOutput = document.getElementById('solution-output');
+        const sourcesOutput = document.getElementById('sources-output');
+        const sourceList = document.getElementById('source-list');
+        const statusMessage = document.getElementById('status-message');
+
+        /**
+         * Utility function for API fetch with exponential backoff.
+         */
+        async function fetchWithBackoff(url, options, maxRetries = 5) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status === 429 || response.status >= 500) {
+                        // Rate limit or server error, retry
+                        throw new Error(`Server error or rate limit: ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        throw error;
+                    }
+                    console.warn(`Request failed (attempt ${i + 1}/${maxRetries}). Retrying in ${delay / 1000}s...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Double the delay
+                }
+            }
+        }
+
+        /**
+         * Main function to call the Gemini API.
+         */
+        async function solveMathProblem(userQuery) {
+            const systemPrompt = "You are a specialized math and calculation assistant. Provide the direct answer, followed by a clear, step-by-step explanation for the solution. Format the output using markdown for readability.";
+            
+            const url = `${API_URL_BASE}?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }], // Enable Google Search grounding
+            };
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            };
+
+            try {
+                const response = await fetchWithBackoff(url, options);
+                
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API returned status ${response.status}: ${errorBody.error?.message || 'Unknown error'}`);
+                }
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (!candidate || !candidate.content?.parts?.[0]?.text) {
+                    throw new Error("No generated content received from the API.");
+                }
+
+                const text = candidate.content.parts[0].text;
+                
+                // Extract grounding sources
+                let sources = [];
+                const groundingMetadata = candidate.groundingMetadata;
+                if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                    sources = groundingMetadata.groundingAttributions
+                        .map(attribution => ({
+                            uri: attribution.web?.uri,
+                            title: attribution.web?.title,
+                        }))
+                        .filter(source => source.uri && source.title);
+                }
+
+                return { text, sources };
+
+            } catch (error) {
+                console.error("API Call Failed:", error);
+                return { text: `Error: Failed to fetch solution. ${error.message}`, sources: [] };
+            }
+        }
+
+        /**
+         * UI rendering and control logic.
+         */
+        solveButton.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+
+            if (!query) {
+                displayStatus('Please enter a math query.', 'bg-yellow-100 text-yellow-800');
+                return;
+            }
+
+            // Reset UI state
+            solveButton.disabled = true;
+            buttonText.textContent = 'Calculating...';
+            loadingSpinner.classList.remove('hidden');
+            solutionOutput.innerHTML = '<p class="text-gray-400">Thinking...</p>';
+            sourcesOutput.classList.add('hidden');
+            sourceList.innerHTML = '';
+            statusMessage.classList.add('hidden');
+            
+            // Display status about the grounding
+            displayStatus('Solving the problem using Gemini and searching the web for context.', 'bg-blue-100 text-blue-800');
+
+            const result = await solveMathProblem(query);
+            
+            // Re-enable button
+            solveButton.disabled = false;
+            buttonText.textContent = 'Solve Problem';
+            loadingSpinner.classList.add('hidden');
+            statusMessage.classList.add('hidden');
+
+            // Update Solution Output
+            // Simple markdown rendering for line breaks and basic emphasis
+            solutionOutput.innerHTML = result.text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+
+            // Update Sources
+            if (result.sources && result.sources.length > 0) {
+                result.sources.forEach((source, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<a href="${source.uri}" target="_blank" class="text-blue-500 hover:text-blue-700 hover:underline">Source ${index + 1}: ${source.title}</a>`;
+                    sourceList.appendChild(listItem);
+                });
+                sourcesOutput.classList.remove('hidden');
+            } else {
+                 sourcesOutput.classList.add('hidden');
+            }
+            
+            // Display success message
+            if (!result.text.startsWith('Error:')) {
+                displayStatus('Solution generated successfully!', 'bg-green-100 text-green-800');
+            }
+        });
+        
+        /**
+         * Displays a status/error message in the dedicated box.
+         */
+        function displayStatus(message, classes) {
+            statusMessage.textContent = message;
+            statusMessage.className = `mt-4 p-3 rounded-lg text-sm ${classes}`;
+            statusMessage.classList.remove('hidden');
+        }
+    </script>
+
+</body>
+</html>
