@@ -21,7 +21,6 @@
             transition: all 0.2s ease;
         }
         .btn-solve:hover:not(:disabled) {
-            Initial commit of the AI Math Solver App
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
         }
@@ -91,9 +90,9 @@
         const API_URL_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
         
         // 🚨🚨 CRITICAL SECURITY WARNING 🚨🚨
-        // This is your API key. By placing it here, it is publicly visible in your website's source code.
-        // DO NOT deploy this file to a public repository (like GitHub Pages) unless you accept the risk 
-        // that your key will be stolen and potentially abused.
+        // This is your API key, hardcoded for deployment to platforms like GitHub Pages.
+        // If this repository is public, your key is visible to everyone.
+        // Replace this key ONLY if you generate a new one, and remember to monitor its usage.
         const apiKey = "AIzaSyC0QnZOQwHyzs3whF9SCqhOQt0Jgj2dmPM"; 
         
         // UI Elements
@@ -160,7 +159,7 @@
                     const errorBody = await response.json();
                     // Detect the 403 error specifically for better user feedback
                     if (response.status === 403) {
-                       throw new Error(`403 Forbidden: API Key Missing/Invalid. Please ensure your environment is configured.`);
+                       throw new Error(`403 Forbidden: API Key Missing/Invalid. Please ensure your key is valid and unrestricted.`);
                     }
                     throw new Error(`API returned status ${response.status}: ${errorBody.error?.message || 'Unknown error'}`);
                 }
@@ -269,19 +268,18 @@
          */
         function initializeApp() {
             // Check the apiKey variable at runtime
+            // Since it is hardcoded above, it should show 'Detected'
             if (!apiKey) {
-                // Update API Status indicator
+                // This path should ideally not be taken since the key is hardcoded.
                 apiStatus.textContent = "API Key: MISSING";
                 apiStatus.className = "mt-3 text-sm font-medium p-2 rounded inline-block bg-red-500 text-white";
                 
-                // Set main output and status message for user
-                solutionOutput.innerHTML = '<p class="text-red-600 font-semibold">CRITICAL ERROR: API Key Missing.</p>';
-                displayStatus('403 Forbidden Error Likely: The application is running, but the Gemini API Key is missing. Please ensure your environment has provided the key.', 'bg-red-100 text-red-800');
+                solutionOutput.innerHTML = '<p class="text-red-600 font-semibold">CRITICAL ERROR: API Key Missing (Hardcoded check failed).</p>';
+                displayStatus('403 Forbidden Error Likely: The application is running, but the Gemini API Key is missing. Please ensure your key is correct.', 'bg-red-100 text-red-800');
                 
-                // Disable the solve button until a key is available
                 solveButton.disabled = true;
             } else {
-                // API Key is present, ready to use
+                // API Key is present (hardcoded), ready to use
                 apiStatus.textContent = "API Key: Detected";
                 apiStatus.className = "mt-3 text-sm font-medium p-2 rounded inline-block bg-green-500 text-white";
                 
