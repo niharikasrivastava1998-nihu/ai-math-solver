@@ -1,1 +1,1 @@
-# ai-math-solver
+# vibe scan
